@@ -1,0 +1,82 @@
+# =========================
+# Go build artifacts
+# =========================
+bin/
+build/
+dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go coverage
+coverage.out
+*.coverprofile
+
+# =========================
+# Go workspace / modules
+# =========================
+vendor/
+go.work
+go.work.sum
+
+# =========================
+# IDEs & Editors
+# =========================
+
+# VS Code
+.vscode/
+
+# JetBrains (GoLand, IntelliJ)
+.idea/
+*.iml
+
+# Vim
+*.swp
+*.swo
+
+# Mac
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# =========================
+# Environment variables
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Logs
+# =========================
+*.log
+
+# =========================
+# Local data (for your app)
+# =========================
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# =========================
+# Temporary files
+# =========================
+tmp/
+temp/
+
+# =========================
+# Test binaries
+# =========================
+*.test
+
+# =========================
+# Misc
+# =========================
+*.bak
+*.tmp

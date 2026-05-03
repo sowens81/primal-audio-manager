@@ -1,0 +1,335 @@
+package services
+
+import (
+	"encoding/json"
+	"errors"
+	"io"
+	"net/http"
+	"testing"
+
+	"github.com/sowens81/primal-audio-manager/pkg/discogs/models"
+)
+
+type mockAPIClient struct {
+	NewRequestFunc func(method, path string) (*http.Request, error)
+	ExecuteFunc    func(req *http.Request, v interface{}) error
+}
+
+func (m *mockAPIClient) NewRequest(method, path string) (*http.Request, error) {
+	return m.NewRequestFunc(method, path)
+}
+
+func (m *mockAPIClient) Execute(req *http.Request, v interface{}) error {
+	return m.ExecuteFunc(req, v)
+}
+
+// Test GetFolders method of collection service
+func TestCollectionService_GetFolders(t *testing.T) {
+	mock := &mockAPIClient{
+		NewRequestFunc: func(method, path string) (*http.Request, error) {
+			expected := "/users/testuser/collection/folders"
+			if path != expected {
+				t.Fatalf("expected path %s, got %s", expected, path)
+			}
+			return http.NewRequest(method, "http://example.com"+path, nil)
+		},
+		ExecuteFunc: func(req *http.Request, v interface{}) error {
+			result, ok := v.(*models.CollectionFolders)
+			if !ok {
+				t.Fatal("type assertion failed")
+			}
+			result.Folders = []models.CollectionFolder{
+				{
+					ID:    0,
+					Name:  "All",
+					Count: 23,
+				},
+			}
+			return nil
+		},
+	}
+
+	service := NewCollectionService(mock)
+
+	resp, err := service.GetFolders("testuser")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(resp.Folders) != 1 {
+		t.Fatalf("expected 1 folder, got %d", len(resp.Folders))
+	}
+
+	if resp.Folders[0].Name != "All" {
+		t.Fatalf("unexpected folder name")
+	}
+}
+
+func TestCollectionService_GetFolders_Error(t *testing.T) {
+	mock := &mockAPIClient{
+		NewRequestFunc: func(method, path string) (*http.Request, error) {
+			return http.NewRequest(method, "http://example.com"+path, nil)
+		},
+		ExecuteFunc: func(req *http.Request, v interface{}) error {
+			return assertError()
+		},
+	}
+
+	service := NewCollectionService(mock)
+
+	_, err := service.GetFolders("testuser")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+// Test GetFolderById method of collection service
+func TestCollectionService_GetFolderById(t *testing.T) {
+	mock := &mockAPIClient{
+		NewRequestFunc: func(method, path string) (*http.Request, error) {
+			expected := "/users/testuser/collection/folders/1"
+			if path != expected {
+				t.Fatalf("expected path %s, got %s", expected, path)
+			}
+			return http.NewRequest(method, "http://example.com"+path, nil)
+		},
+		ExecuteFunc: func(req *http.Request, v interface{}) error {
+			result, ok := v.(*models.CollectionFolder)
+			if !ok {
+				t.Fatal("type assertion failed")
+			}
+			*result = models.CollectionFolder{
+				ID:    1,
+				Name:  "All",
+				Count: 23,
+			}
+			return nil
+		},
+	}
+
+	service := NewCollectionService(mock)
+
+	resp, err := service.GetFolderById("testuser", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if resp.ID != 1 {
+		t.Fatalf("expected folder ID 1, got %d", resp.ID)
+	}
+
+	if resp.Name != "All" {
+		t.Fatalf("unexpected folder name")
+	}
+}
+
+func TestCollectionService_GetFolderById_Error(t *testing.T) {
+	mock := &mockAPIClient{
+		NewRequestFunc: func(method, path string) (*http.Request, error) {
+			return http.NewRequest(method, "http://example.com"+path, nil)
+		},
+		ExecuteFunc: func(req *http.Request, v interface{}) error {
+			return assertError()
+		},
+	}
+
+	service := NewCollectionService(mock)
+
+	_, err := service.GetFolderById("testuser", 1)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+// Test AddFolder method of collection service
+func TestCollectionService_AddFolder(t *testing.T) {
+	mock := &mockAPIClient{
+		NewRequestFunc: func(method, path string) (*http.Request, error) {
+			expectedPath := "/users/testuser/collection/folders"
+
+			if method != "POST" {
+				t.Fatalf("expected POST method, got %s", method)
+			}
+
+			if path != expectedPath {
+				t.Fatalf("expected path %s, got %s", expectedPath, path)
+			}
+
+			return http.NewRequest(method, "http://example.com"+path, nil)
+		},
+		ExecuteFunc: func(req *http.Request, v interface{}) error {
+			// ✅ Read body
+			bodyBytes, err := io.ReadAll(req.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// ✅ Validate JSON structure
+			var payload map[string]interface{}
+			if err := json.Unmarshal(bodyBytes, &payload); err != nil {
+				t.Fatalf("invalid JSON body: %v", err)
+			}
+
+			// ✅ Validate "name" field
+			name, ok := payload["name"].(string)
+			if !ok {
+				t.Fatal("expected 'name' field in body")
+			}
+
+			if name != "NewFolder" {
+				t.Fatalf("expected name NewFolder, got %s", name)
+			}
+
+			// ✅ Validate Content-Type
+			if req.Header.Get("Content-Type") != "application/json" {
+				t.Fatalf("expected Content-Type application/json")
+			}
+
+			// ✅ Mock response
+			result, ok := v.(*models.CollectionFolder)
+			if !ok {
+				t.Fatal("expected *models.CollectionFolder")
+			}
+
+			*result = models.CollectionFolder{
+				ID:    1,
+				Name:  "NewFolder",
+				Count: 0,
+			}
+
+			return nil
+		},
+	}
+
+	service := NewCollectionService(mock)
+
+	resp, err := service.AddFolder("testuser", "NewFolder")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if resp.ID != 1 {
+		t.Fatalf("expected folder ID 1, got %d", resp.ID)
+	}
+
+	if resp.Name != "NewFolder" {
+		t.Fatalf("unexpected folder name")
+	}
+
+	if resp.Count != 0 {
+		t.Fatalf("expected folder count 0, got %d", resp.Count)
+	}
+}
+
+func TestCollectionService_AddFolder_Error(t *testing.T) {
+	expectedErr := errors.New("execute failed")
+
+	mock := &mockAPIClient{
+		NewRequestFunc: func(method, path string) (*http.Request, error) {
+			return http.NewRequest(method, "http://example.com"+path, nil)
+		},
+		ExecuteFunc: func(req *http.Request, v interface{}) error {
+			return expectedErr
+		},
+	}
+
+	service := NewCollectionService(mock)
+
+	_, err := service.AddFolder("testuser", "NewFolder")
+
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	if err != expectedErr {
+		t.Fatalf("expected %v, got %v", expectedErr, err)
+	}
+}
+
+// Test GetFolderReleases method of collection service
+
+func TestCollectionService_GetFolderReleases(t *testing.T) {
+	mock := &mockAPIClient{
+		NewRequestFunc: func(method, path string) (*http.Request, error) {
+			expected := "/users/testuser/collection/folders/1/releases"
+
+			if method != "GET" {
+				t.Fatalf("expected GET method")
+			}
+
+			if path != expected {
+				t.Fatalf("expected %s, got %s", expected, path)
+			}
+
+			return http.NewRequest(method, "http://example.com"+path, nil)
+		},
+		ExecuteFunc: func(req *http.Request, v interface{}) error {
+			result, ok := v.(*models.CollectionReleases)
+			if !ok {
+				t.Fatal("expected *models.CollectionReleases")
+			}
+
+			result.Releases = []models.CollectionItem{
+				{
+					ID:         2464521,
+					InstanceID: 1,
+					FolderID:   1,
+					Rating:     0,
+					BasicInfo: models.BasicInformation{
+						Title: "Information Chase",
+						Year:  2006,
+						Artists: []models.Artist{
+							{Name: "Bit Shifter"},
+						},
+					},
+				},
+			}
+
+			return nil
+		},
+	}
+
+	service := NewCollectionService(mock)
+
+	resp, err := service.GetFolderReleases("testuser", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(resp.Releases) != 1 {
+		t.Fatalf("expected 1 release")
+	}
+
+	if resp.Releases[0].BasicInfo.Title != "Information Chase" {
+		t.Fatalf("unexpected title")
+	}
+}
+
+func TestCollectionService_GetFolderReleases_Error(t *testing.T) {
+	mock := &mockAPIClient{
+		NewRequestFunc: func(method, path string) (*http.Request, error) {
+			return http.NewRequest(method, "http://example.com"+path, nil)
+		},
+		ExecuteFunc: func(req *http.Request, v interface{}) error {
+			return assertError()
+		},
+	}
+
+	service := NewCollectionService(mock)
+
+	_, err := service.GetFolderReleases("testuser", 1)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+// Helper function to return a consistent error for testing
+func assertError() error {
+	return &mockError{}
+}
+
+type mockError struct{}
+
+func (e *mockError) Error() string {
+	return "mock error"
+}
