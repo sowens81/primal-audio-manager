@@ -12,11 +12,7 @@ import (
 )
 
 func main() {
-	// Load .env file (non-fatal if missing)
-	err := godotenv.Load()
-	if err != nil {
-		log.Println("No .env file found, using system environment")
-	}
+	_ = godotenv.Load()
 
 	token := os.Getenv("DISCOGS_TOKEN")
 	username := os.Getenv("DISCOGS_USERNAME")
@@ -27,16 +23,11 @@ func main() {
 
 	client := discogs.NewClient(token)
 
-	// 👇 use reusable handler
-	err = sync.SyncCollection(client, username)
-	if err != nil {
+	svc := sync.NewService(client.Collection, username, os.Stdout)
+
+	if err := svc.SyncCollection(); err != nil {
 		cli.HandleError(err)
 	}
-
-	// err = sync.AddCollectionFolder(client, username, "Hardcore")
-	// if err != nil {
-	// 	cli.HandleError(err)
-	// }
 
 	fmt.Println("✅ sync complete")
 }
