@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/joho/godotenv"
-	"github.com/sowens81/primal-audio-manager/internal/cli"
+	"github.com/sowens81/primal-audio-manager/internal/errors"
 	"github.com/sowens81/primal-audio-manager/internal/sync"
 	"github.com/sowens81/primal-audio-manager/pkg/discogs"
 )
@@ -26,7 +26,7 @@ func main() {
 	svc := sync.NewService(client.Collection, username, os.Stdout)
 
 	if err := svc.SyncCollection(); err != nil {
-		cli.HandleError(err)
+		errors.HandleError(err)
 	}
 
 	fmt.Println("✅ sync complete")
