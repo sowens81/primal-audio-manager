@@ -249,9 +249,14 @@ func TestCollectionService_AddFolder_Error(t *testing.T) {
 // Test GetFolderReleases method of collection service
 
 func TestCollectionService_GetFolderReleases(t *testing.T) {
+	pageOpts := models.NewPageSettings(
+		models.WithPage(2),
+		models.WithPerPage(50),
+	)
+
 	mock := &mockAPIClient{
 		NewRequestFunc: func(method, path string) (*http.Request, error) {
-			expected := "/users/testuser/collection/folders/1/releases"
+			expected := "/users/testuser/collection/folders/1/releases?page=2&per_page=50"
 
 			if method != "GET" {
 				t.Fatalf("expected GET method")
@@ -291,7 +296,7 @@ func TestCollectionService_GetFolderReleases(t *testing.T) {
 
 	service := NewCollectionService(mock)
 
-	resp, err := service.GetFolderReleases("testuser", 1)
+	resp, err := service.GetFolderReleases("testuser", 1, pageOpts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -306,6 +311,8 @@ func TestCollectionService_GetFolderReleases(t *testing.T) {
 }
 
 func TestCollectionService_GetFolderReleases_Error(t *testing.T) {
+	pageOpts := models.NewPageSettings() // defaults
+
 	mock := &mockAPIClient{
 		NewRequestFunc: func(method, path string) (*http.Request, error) {
 			return http.NewRequest(method, "http://example.com"+path, nil)
@@ -317,7 +324,7 @@ func TestCollectionService_GetFolderReleases_Error(t *testing.T) {
 
 	service := NewCollectionService(mock)
 
-	_, err := service.GetFolderReleases("testuser", 1)
+	_, err := service.GetFolderReleases("testuser", 1, pageOpts)
 	if err == nil {
 		t.Fatal("expected error")
 	}

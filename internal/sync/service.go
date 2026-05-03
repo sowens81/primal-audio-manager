@@ -3,6 +3,8 @@ package sync
 import (
 	"fmt"
 	"io"
+
+	"github.com/sowens81/primal-audio-manager/pkg/discogs/models"
 )
 
 type Service struct {
@@ -20,20 +22,25 @@ func NewService(client CollectionClient, username string, out io.Writer) *Servic
 }
 
 func (s *Service) SyncCollection() error {
-	resp, err := s.client.GetFolders(s.username)
+	fmt.Fprintln(s.out, "Getting All Collections folder:")
+
+	collectionReleases, err := s.client.GetFolderReleases(s.username, 0, models.NewPageSettings())
 	if err != nil {
 		return err
 	}
 
-	fmt.Fprintln(s.out, "Collection folders:")
+	fmt.Printf("Number of Pages: %d\n", collectionReleases.Pagination.Pages)
 
-	for _, folder := range resp.Folders {
+	for page := 1; page <= collectionReleases.Pagination.Pages; page++ {
+		pageOpts := models.NewPageSettings()
+		pageOpts.Page = page
+		fmt.Fprintf(s.out, "Getting page %d of All Collections folder:\n", page)
+		fmt.Fprintf(s.out, "------------------------------------------\n")
+		fmt.Fprintf(s.out, "------------------------------------------\n")
+		fmt.Fprintf(s.out, "------------------------------------------\n")
 
-		if err := s.GetFolderByID(folder.ID); err != nil {
-			return err
-		}
-
-		if err := s.GetFolderReleases(folder.ID); err != nil {
+		err := s.GetFolderReleases(0, pageOpts)
+		if err != nil {
 			return err
 		}
 	}
@@ -61,8 +68,8 @@ func (s *Service) GetFolderByID(folderID int) error {
 	return nil
 }
 
-func (s *Service) GetFolderReleases(folderID int) error {
-	resp, err := s.client.GetFolderReleases(s.username, folderID)
+func (s *Service) GetFolderReleases(folderID int, pageOpts models.PageSettings) error {
+	resp, err := s.client.GetFolderReleases(s.username, folderID, pageOpts)
 	if err != nil {
 		return err
 	}

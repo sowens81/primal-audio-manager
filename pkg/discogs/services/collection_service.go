@@ -86,8 +86,8 @@ func (s *CollectionService) AddFolder(username string, folderName string) (*mode
 	return &result, nil
 }
 
-func (s *CollectionService) GetFolderReleases(username string, folderID int) (*models.CollectionReleases, error) {
-	path := fmt.Sprintf("/users/%s/collection/folders/%d/releases", username, folderID)
+func (s *CollectionService) GetFolderReleases(username string, folderID int, pageOptions models.PageSettings) (*models.CollectionReleases, error) {
+	path := fmt.Sprintf("/users/%s/collection/folders/%d/releases?page=%d&per_page=%d", username, folderID, pageOptions.Page, pageOptions.PerPage)
 
 	req, err := s.client.NewRequest("GET", path)
 	if err != nil {
