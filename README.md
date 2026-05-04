@@ -88,12 +88,14 @@ Key capabilities:
 
 `internal/sync.Service` orchestrates the collection sync and exposes:
 
-| Method | Description |
-|---|---|
-| `SyncCollection()` | Pages through all releases in folder 0 (All) and prints them |
-| `GetFolderByID(folderID int)` | Fetches and prints metadata for a single folder |
-| `AddFolder(name string)` | Creates a new collection folder |
-| `GetItemsByFolder(folderID int, pageOpts)` | Fetches and prints releases for a given folder page |
+| Method                                                | Description                                                  |
+| ----------------------------------------------------- | ------------------------------------------------------------ |
+| `SyncCollection()`                                    | Pages through all releases in folder 0 (All) and prints them |
+| `GetFolderByID(folderID int)`                         | Fetches and prints metadata for a single folder              |
+| `AddFolder(name string)`                              | Creates a new collection folder                              |
+| `GetItemsByReleaseId(username string, releaseID int)` | Fetches all instances of a given release in the collection   |
+| `GetItemsByFolder(folderID int, pageOpts)`            | Fetches and prints releases for a given folder page          |
+| `GetCustomFields(username string)`                    | Fetches the user defined collection notes fields             |
 
 ## Discogs Collection API
 
@@ -102,7 +104,9 @@ Key capabilities:
 - `GetFolders(username string)`
 - `GetFolderById(username string, folderID int)`
 - `AddFolder(username string, folderName string)`
+- `GetItemsByReleaseId(username string, releaseID int)`
 - `GetItemsByFolder(username string, folderID int, pageOpts)`
+- `GetCustomFields(username string)`
 
 ## Error Handling
 
@@ -149,4 +153,4 @@ go vet ./...
 
 ## License
 
-Add your license here (for example, MIT).
+This project is licensed under the [MIT License](LICENSE).
