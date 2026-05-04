@@ -1,128 +1,144 @@
 # Primal Audio Manager
 
-Go-based audio collection manager with Discogs integration.
+A Go CLI tool that syncs and manages your Discogs music collection.
 
 ## Overview
 
-Primal Audio Manager provides services and models for working with Discogs collection data, including:
+Primal Audio Manager connects to the Discogs API to sync your vinyl/record collection. It pages through all releases in your collection folders and outputs them to stdout, with a clean sync summary on completion.
 
-- Fetching collection folders
-- Fetching a folder by ID
-- Adding folders
-- Fetching releases in a folder
+Key capabilities:
+
+- Sync all releases across collection folders (paginated)
+- Fetch a specific folder by ID
+- Add new collection folders
+- Structured error handling with actionable Discogs API diagnostics
 
 ## Tech Stack
 
-- **Language:** Go
-- **API Integration:** Discogs
-- **Project Layout:** package-oriented (`pkg/...`, `internal/...`)
+- **Language:** Go 1.25.3
+- **API Integration:** Discogs REST API
+- **Dependencies:** [`github.com/joho/godotenv`](https://github.com/joho/godotenv)
+- **Project Layout:** package-oriented (`pkg/...`, `internal/...`, `cmd/...`)
 
 ## Project Structure
 
-```text
+``text
 .
+├─ cmd/
+│  └─ primal-audio-manager/   # CLI entrypoint
+│     └─ main.go
 ├─ internal/
-│  └─ models/
+│  ├─ errors/                 # Error handling utilities
+│  ├─ models/                 # Internal domain models
+│  └─ sync/                   # Collection sync service
+│     ├─ service.go
+│     ├─ types.go
+│     └─ service_test.go
 ├─ pkg/
-│  └─ discogs/
-│     ├─ models/
+│  └─ discogs/                # Discogs API client
+│     ├─ client.go
+│     ├─ errors.go
+│     ├─ models/              # Discogs API response models
 │     └─ services/
 │        └─ collection_service.go
-└─ README.md
-```
+└─ scripts/
+   └─ go-validate.ps1
+``
 
 ## Prerequisites
 
-- Go 1.22+ (or your repo’s required Go version)
-- Discogs account + API credentials (if calling live API)
+- Go 1.25.3+
+- A [Discogs](https://www.discogs.com) account with a personal access token
 
 ## Getting Started
 
 1. Clone the repository:
-   ```powershell
+   ``powershell
    git clone https://github.com/sowens81/primal-audio-manager.git
    cd primal-audio-manager
-   ```
+   ``
 
 2. Install dependencies:
-   ```powershell
+   ``powershell
    go mod tidy
-   ```
+   ``
 
-3. Configure environment variables (example):
-   ```powershell
-   $env:DISCOGS_TOKEN="your-token"
-   $env:DISCOGS_USER_AGENT="PrimalAudioManager/1.0"
-   ```
+3. Configure environment variables. You can export them directly or create a `.env` file in the project root:
+   ``powershell
+   $env:DISCOGS_TOKEN="your-personal-access-token"
+   $env:DISCOGS_USERNAME="your-discogs-username"
+   ``
+   Or create a `.env` file:
+   ``env
+   DISCOGS_TOKEN=your-personal-access-token
+   DISCOGS_USERNAME=your-discogs-username
+   ``
 
-4. Run tests:
-   ```powershell
+4. Run the sync:
+   ``powershell
+   go run ./cmd/primal-audio-manager
+   ``
+
+5. Run tests:
+   ``powershell
    go test ./...
-   ```
+   ``
 
-## Example Usage
+## Sync Service
 
-```go
-package main
+`internal/sync.Service` orchestrates the collection sync and exposes:
 
-import (
-    "fmt"
-    "log"
+| Method | Description |
+|---|---|
+| `SyncCollection()` | Pages through all releases in folder 0 (All) and prints them |
+| `GetFolderByID(folderID int)` | Fetches and prints metadata for a single folder |
+| `AddFolder(name string)` | Creates a new collection folder |
+| `GetItemsByFolder(folderID int, pageOpts)` | Fetches and prints releases for a given folder page |
 
-    "github.com/sowens81/primal-audio-manager/pkg/discogs/services"
-)
+## Discogs Collection API
 
-func main() {
-    // Create your Discogs API client (implementation-specific)
-    // client := discogs.NewClient(...)
-
-    // collectionSvc := services.NewCollectionService(client)
-    // folders, err := collectionSvc.GetFolders("your-username")
-    // if err != nil {
-    // 	log.Fatal(err)
-    // }
-
-    fmt.Println("Initialize service and call methods from pkg/discogs/services")
-    log.Println("See collection_service.go for available methods")
-}
-```
-
-## API Services
-
-`CollectionService` currently exposes methods similar to:
+`pkg/discogs/services.CollectionService` wraps the Discogs API:
 
 - `GetFolders(username string)`
 - `GetFolderById(username string, folderID int)`
 - `AddFolder(username string, folderName string)`
-- `GetFolderReleases(username string, folderID int)`
+- `GetItemsByFolder(username string, folderID int, pageOpts)`
 
 ## Error Handling
 
-When integrating with Discogs, include:
+Discogs API errors include:
 
 - HTTP status code
 - API error message
 - `detail` validation payload
-- Raw response body fallback (when JSON parse fails)
+- Raw response body fallback (when JSON parsing fails)
 
-This makes validation failures actionable.
+Application errors are handled via `internal/errors.HandleError`.
 
 ## Development
 
 Useful commands:
 
-```powershell
+``powershell
+# Run all tests
 go test ./...
+
+# Run tests with verbose output
 go test -v ./...
+
+# Vet the code
 go vet ./...
-```
+
+# Run the validation script
+.\scripts\go-validate.ps1
+``
 
 ## Roadmap
 
 - Improve Discogs error diagnostics
-- Add unit tests for service layer
-- Add CLI or API entrypoint
-- Add configuration and logging package
+- Expand sync output (CSV / JSON export)
+- Add structured logging package
+- Add configuration file support
 
 ## Contributing
 

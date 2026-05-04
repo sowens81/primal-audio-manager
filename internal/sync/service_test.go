@@ -13,10 +13,10 @@ import (
 //
 
 type mockCollectionClient struct {
-	GetFoldersFunc        func(string) (*models.CollectionFolders, error)
-	GetFolderByIdFunc     func(string, int) (*models.CollectionFolder, error)
-	GetFolderReleasesFunc func(string, int, models.PageSettings) (*models.CollectionReleases, error)
-	AddFolderFunc         func(string, string) (*models.CollectionFolder, error)
+	GetFoldersFunc       func(string) (*models.CollectionFolders, error)
+	GetFolderByIdFunc    func(string, int) (*models.CollectionFolder, error)
+	GetItemsByFolderFunc func(string, int, models.PageSettings) (*models.CollectionReleases, error)
+	AddFolderFunc        func(string, string) (*models.CollectionFolder, error)
 }
 
 func (m *mockCollectionClient) GetFolders(username string) (*models.CollectionFolders, error) {
@@ -33,9 +33,9 @@ func (m *mockCollectionClient) GetFolderById(username string, folderID int) (*mo
 	return nil, nil
 }
 
-func (m *mockCollectionClient) GetFolderReleases(username string, folderID int, ps models.PageSettings) (*models.CollectionReleases, error) {
-	if m.GetFolderReleasesFunc != nil {
-		return m.GetFolderReleasesFunc(username, folderID, ps)
+func (m *mockCollectionClient) GetItemsByFolder(username string, folderID int, ps models.PageSettings) (*models.CollectionReleases, error) {
+	if m.GetItemsByFolderFunc != nil {
+		return m.GetItemsByFolderFunc(username, folderID, ps)
 	}
 	return nil, nil
 }
@@ -57,7 +57,7 @@ func TestService_SyncCollection(t *testing.T) {
 	callCount := 0
 
 	mock := &mockCollectionClient{
-		GetFolderReleasesFunc: func(username string, folderID int, ps models.PageSettings) (*models.CollectionReleases, error) {
+		GetItemsByFolderFunc: func(username string, folderID int, ps models.PageSettings) (*models.CollectionReleases, error) {
 			// First call: return pagination info
 			if callCount == 0 {
 				callCount++
@@ -117,7 +117,7 @@ func TestService_SyncCollection(t *testing.T) {
 
 func TestService_SyncCollection_Error(t *testing.T) {
 	mock := &mockCollectionClient{
-		GetFolderReleasesFunc: func(username string, folderID int, ps models.PageSettings) (*models.CollectionReleases, error) {
+		GetItemsByFolderFunc: func(username string, folderID int, ps models.PageSettings) (*models.CollectionReleases, error) {
 			return nil, errors.New("fail")
 		},
 	}
@@ -204,14 +204,14 @@ func TestService_GetFolderByID(t *testing.T) {
 }
 
 //
-// GetFolderReleases
+// GetItemsByFolder
 //
 
-func TestService_GetFolderReleases(t *testing.T) {
+func TestService_GetItemsByFolder(t *testing.T) {
 	buf := &bytes.Buffer{}
 
 	mock := &mockCollectionClient{
-		GetFolderReleasesFunc: func(username string, id int, ps models.PageSettings) (*models.CollectionReleases, error) {
+		GetItemsByFolderFunc: func(username string, id int, ps models.PageSettings) (*models.CollectionReleases, error) {
 			return &models.CollectionReleases{
 				Releases: []models.CollectionItem{
 					{
@@ -232,7 +232,7 @@ func TestService_GetFolderReleases(t *testing.T) {
 
 	service := NewService(mock, "user", buf)
 
-	err := service.GetFolderReleases(0, models.NewPageSettings())
+	err := service.GetItemsByFolder(0, models.NewPageSettings())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,16 +244,16 @@ func TestService_GetFolderReleases(t *testing.T) {
 	}
 }
 
-func TestService_GetFolderReleases_Error(t *testing.T) {
+func TestService_GetItemsByFolder_Error(t *testing.T) {
 	mock := &mockCollectionClient{
-		GetFolderReleasesFunc: func(username string, id int, ps models.PageSettings) (*models.CollectionReleases, error) {
+		GetItemsByFolderFunc: func(username string, id int, ps models.PageSettings) (*models.CollectionReleases, error) {
 			return nil, errors.New("fail")
 		},
 	}
 
 	service := NewService(mock, "user", &bytes.Buffer{})
 
-	err := service.GetFolderReleases(0, models.NewPageSettings())
+	err := service.GetItemsByFolder(0, models.NewPageSettings())
 	if err == nil {
 		t.Fatal("expected error")
 	}

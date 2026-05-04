@@ -24,7 +24,7 @@ func NewService(client CollectionClient, username string, out io.Writer) *Servic
 func (s *Service) SyncCollection() error {
 	fmt.Fprintln(s.out, "Getting All Collections folder:")
 
-	collectionReleases, err := s.client.GetFolderReleases(s.username, 0, models.NewPageSettings())
+	collectionReleases, err := s.client.GetItemsByFolder(s.username, 0, models.NewPageSettings())
 	if err != nil {
 		return err
 	}
@@ -39,7 +39,7 @@ func (s *Service) SyncCollection() error {
 		fmt.Fprintf(s.out, "------------------------------------------\n")
 		fmt.Fprintf(s.out, "------------------------------------------\n")
 
-		err := s.GetFolderReleases(0, pageOpts)
+		err := s.GetItemsByFolder(0, pageOpts)
 		if err != nil {
 			return err
 		}
@@ -68,8 +68,8 @@ func (s *Service) GetFolderByID(folderID int) error {
 	return nil
 }
 
-func (s *Service) GetFolderReleases(folderID int, pageOpts models.PageSettings) error {
-	resp, err := s.client.GetFolderReleases(s.username, folderID, pageOpts)
+func (s *Service) GetItemsByFolder(folderID int, pageOpts models.PageSettings) error {
+	resp, err := s.client.GetItemsByFolder(s.username, folderID, pageOpts)
 	if err != nil {
 		return err
 	}
