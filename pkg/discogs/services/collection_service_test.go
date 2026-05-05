@@ -34,15 +34,17 @@ func TestCollectionService_GetFolders(t *testing.T) {
 			return http.NewRequest(method, "http://example.com"+path, nil)
 		},
 		ExecuteFunc: func(req *http.Request, v interface{}) error {
-			result, ok := v.(*models.CollectionFolders)
+			result, ok := v.(*models.CollectionFoldersResponse)
 			if !ok {
 				t.Fatal("type assertion failed")
 			}
-			result.Folders = []models.CollectionFolder{
-				{
-					ID:    0,
-					Name:  "All",
-					Count: 23,
+			*result = models.CollectionFoldersResponse{
+				Folders: []models.CollectionFolder{
+					{
+						ID:    0,
+						Name:  "All",
+						Count: 23,
+					},
 				},
 			}
 			return nil
@@ -100,19 +102,16 @@ func TestCollectionService_AddFolder(t *testing.T) {
 			return http.NewRequest(method, "http://example.com"+path, nil)
 		},
 		ExecuteFunc: func(req *http.Request, v interface{}) error {
-			// ✅ Read body
 			bodyBytes, err := io.ReadAll(req.Body)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			// ✅ Validate JSON structure
 			var payload map[string]interface{}
 			if err := json.Unmarshal(bodyBytes, &payload); err != nil {
 				t.Fatalf("invalid JSON body: %v", err)
 			}
 
-			// ✅ Validate "name" field
 			name, ok := payload["name"].(string)
 			if !ok {
 				t.Fatal("expected 'name' field in body")
@@ -122,12 +121,10 @@ func TestCollectionService_AddFolder(t *testing.T) {
 				t.Fatalf("expected name NewFolder, got %s", name)
 			}
 
-			// ✅ Validate Content-Type
 			if req.Header.Get("Content-Type") != "application/json" {
 				t.Fatalf("expected Content-Type application/json")
 			}
 
-			// ✅ Mock response
 			result, ok := v.(*models.CollectionFolder)
 			if !ok {
 				t.Fatal("expected *models.CollectionFolder")
@@ -380,7 +377,7 @@ func TestCollectionService_GetItemsByFolder(t *testing.T) {
 }
 
 func TestCollectionService_GetItemsByFolder_Error(t *testing.T) {
-	pageOpts := models.NewPageSettings() // defaults
+	pageOpts := models.NewPageSettings()
 
 	mock := &mockAPIClient{
 		NewRequestFunc: func(method, path string) (*http.Request, error) {

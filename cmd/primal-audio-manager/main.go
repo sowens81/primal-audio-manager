@@ -23,7 +23,7 @@ func main() {
 
 	client := discogs.NewClient(token)
 
-	svc := sync.NewService(client.Collection, username, os.Stdout)
+	svc := sync.NewService(client.Collection, client.Release, username, os.Stdout)
 
 	if err := svc.SyncCollection(); err != nil {
 		errors.HandleError(err)

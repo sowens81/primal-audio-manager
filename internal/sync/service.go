@@ -3,100 +3,114 @@ package sync
 import (
 	"fmt"
 	"io"
+	"strconv"
 
-	"github.com/sowens81/primal-audio-manager/pkg/discogs/models"
+	"github.com/sowens81/primal-audio-manager/internal/cli"
+	"github.com/sowens81/primal-audio-manager/internal/helpers"
+	models "github.com/sowens81/primal-audio-manager/internal/models"
+	discogsmodels "github.com/sowens81/primal-audio-manager/pkg/discogs/models"
 )
 
 type Service struct {
-	client   CollectionClient
-	username string
-	out      io.Writer
+	DiscogsCollectionClient DiscogsCollectionClient
+	DiscogsReleaseClient    DiscogsReleaseClient
+	username                string
+	out                     io.Writer
 }
 
-func NewService(client CollectionClient, username string, out io.Writer) *Service {
+func NewService(discogsCollectionClient DiscogsCollectionClient, discogsReleaseClient DiscogsReleaseClient, username string, out io.Writer) *Service {
 	return &Service{
-		client:   client,
-		username: username,
-		out:      out,
+		DiscogsCollectionClient: discogsCollectionClient,
+		DiscogsReleaseClient:    discogsReleaseClient,
+		username:                username,
+		out:                     out,
 	}
 }
 
 func (s *Service) SyncCollection() error {
-	fmt.Fprintln(s.out, "Getting All Collections folder:")
+	// Get Collection Folders
+	fmt.Fprintln(s.out, "Getting Collection Folders:")
 
-	collectionReleases, err := s.client.GetItemsByFolder(s.username, 0, models.NewPageSettings())
+	collectionFolders, err := s.DiscogsCollectionClient.GetFolders(s.username)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Number of Pages: %d\n", collectionReleases.Pagination.Pages)
+	// for each folder, print out the folder id, name and number of items in the folder
 
-	for page := 1; page <= collectionReleases.Pagination.Pages; page++ {
-		pageOpts := models.NewPageSettings()
+	for _, folder := range collectionFolders.Folders {
+		fmt.Fprintf(s.out, "Folder ID: %d, Name: %s, Items: %d\n",
+			folder.ID, folder.Name, folder.Count)
+	}
+
+	// user input to get folder ID to sync
+
+	userResponse := cli.PromptRequired("Enter folder Id to Sync: ")
+
+	folderId, err := strconv.Atoi(userResponse)
+	if err != nil {
+		fmt.Println("invalid number:", err)
+		return err
+	}
+
+	// get releases in a folder
+	userCollection := []models.CollectionItem{}
+
+	discogsCollections, err := s.DiscogsCollectionClient.GetItemsByFolder(s.username, folderId, discogsmodels.NewPageSettings())
+	if err != nil {
+		return err
+	}
+
+	totalPages := discogsCollections.Pagination.Pages
+	fmt.Printf("Total Pages: %d\n", totalPages)
+
+	for page := 1; page <= totalPages; page++ {
+		pageOpts := discogsmodels.NewPageSettings()
 		pageOpts.Page = page
 		fmt.Fprintf(s.out, "Getting page %d of All Collections folder:\n", page)
 		fmt.Fprintf(s.out, "------------------------------------------\n")
-		fmt.Fprintf(s.out, "------------------------------------------\n")
-		fmt.Fprintf(s.out, "------------------------------------------\n")
 
-		err := s.GetItemsByFolder(0, pageOpts)
+		discogsCollections, err := s.DiscogsCollectionClient.GetItemsByFolder(s.username, folderId, pageOpts)
 		if err != nil {
 			return err
 		}
-	}
 
-	return nil
-}
+		for _, item := range discogsCollections.Releases {
 
-func (s *Service) AddFolder(name string) error {
-	resp, err := s.client.AddFolder(s.username, name)
-	if err != nil {
-		return err
-	}
+			releaseId := item.BasicInfo.ID
 
-	fmt.Fprintf(s.out, "Added folder: [%d] %s (%d items)\n", resp.ID, resp.Name, resp.Count)
-	return nil
-}
+			// get release details for each release in the collection
+			release, err := s.DiscogsReleaseClient.GetReleaseById(releaseId)
+			if err != nil {
+				return err
+			}
 
-func (s *Service) GetFolderByID(folderID int) error {
-	resp, err := s.client.GetFolderById(s.username, folderID)
-	if err != nil {
-		return err
-	}
+			collectionItem := models.CollectionItem{
+				ID:                  1, // need a function to generate a unique ID for the collection item
+				CollectionID:        item.ID,
+				InstanceID:          item.InstanceID,
+				CatalogNumber:       helpers.ConvertDiscogsCatNoToListString(item.BasicInfo.Labels),
+				Artists:             helpers.ConvertDiscogsArtistToString(item.BasicInfo.Artists),
+				Title:               item.BasicInfo.Title,
+				Year:                item.BasicInfo.Year,
+				Genre:               append(item.BasicInfo.Genres, item.BasicInfo.Styles...),
+				Labels:              helpers.ConvertDiscogsLabelsToListString(item.BasicInfo.Labels),
+				Rating:              item.Rating,
+				FolderID:            item.FolderID,
+				Notes:               item.Notes,
+				CoverImage:          item.BasicInfo.CoverImage,
+				CoverImageThumbnail: release.Thumb,
+				TrackList:           release.Tracklist,
+			}
 
-	fmt.Fprintf(s.out, "Retrieved folder: [%d] %s (%d items)\n", resp.ID, resp.Name, resp.Count)
-	return nil
-}
+			userCollection = append(userCollection, collectionItem)
 
-func (s *Service) GetItemsByFolder(folderID int, pageOpts models.PageSettings) error {
-	resp, err := s.client.GetItemsByFolder(s.username, folderID, pageOpts)
-	if err != nil {
-		return err
-	}
-
-	fmt.Fprintf(s.out, "Releases in folder [%d]:\n", folderID)
-
-	for _, release := range resp.Releases {
-
-		artist := "Unknown"
-		if len(release.BasicInfo.Artists) > 0 {
-			artist = release.BasicInfo.Artists[0].Name
 		}
+	}
 
-		genre := "Unknown"
-		if len(release.BasicInfo.Genres) > 0 {
-			genre = release.BasicInfo.Genres[0]
-		}
-
-		fmt.Fprintf(
-			s.out,
-			"- %s by %s (ID: %d, Year: %d, Genre: %s)\n",
-			release.BasicInfo.Title,
-			artist,
-			release.ID,
-			release.BasicInfo.Year,
-			genre,
-		)
+	for _, item := range userCollection {
+		fmt.Fprintf(s.out, "Title: %s, Artist: %s, Year: %d\n",
+			item.Title, item.Artists, item.Year)
 	}
 
 	return nil

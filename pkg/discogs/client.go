@@ -17,6 +17,7 @@ type Client struct {
 	HTTPClient HTTPClient
 
 	Collection *services.CollectionService
+	Release    *services.ReleaseService
 }
 
 func NewClient(token string) *Client {
@@ -27,6 +28,6 @@ func NewClient(token string) *Client {
 	}
 
 	c.Collection = services.NewCollectionService(c)
-
+	c.Release = services.NewReleaseService(c)
 	return c
 }

@@ -5,15 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 
 	"github.com/sowens81/primal-audio-manager/pkg/discogs/models"
 )
-
-type APIClient interface {
-	NewRequest(method, path string) (*http.Request, error)
-	Execute(req *http.Request, v interface{}) error
-}
 
 type CollectionService struct {
 	client APIClient
@@ -32,27 +26,27 @@ func NewCollectionService(client APIClient) *CollectionService {
 // Retrieve a list of folders in a user’s collection. If the collection has been made private by its owner, authentication as the collection
 // owner is required. If you are not authenticated as the collection owner, only folder ID 0 (the “All” folder) will be visible
 // (if the requested user’s collection is public).
-func (s *CollectionService) GetFolders(username string) (*models.CollectionFolders, error) {
+func (s *CollectionService) GetFolders(username string) (models.CollectionFoldersResponse, error) {
 	path := fmt.Sprintf("/users/%s/collection/folders", username)
 
 	req, err := s.client.NewRequest("GET", path)
 	if err != nil {
-		return nil, err
+		return models.CollectionFoldersResponse{}, err
 	}
 
-	var result models.CollectionFolders
+	var result models.CollectionFoldersResponse
 	err = s.client.Execute(req, &result)
 	if err != nil {
-		return nil, err
+		return models.CollectionFoldersResponse{}, err
 	}
 
-	return &result, nil
+	return result, nil
 }
 
 // Discogs API: POST /users/{username}/collection/folders
 //
 // Create a new folder in a user’s collection.
-func (s *CollectionService) AddFolder(username string, folderName string) (*models.CollectionFolder, error) {
+func (s *CollectionService) AddFolder(username string, folderName string) (models.CollectionFolder, error) {
 	path := fmt.Sprintf("/users/%s/collection/folders", username)
 
 	payload := map[string]string{
@@ -61,12 +55,12 @@ func (s *CollectionService) AddFolder(username string, folderName string) (*mode
 
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return nil, err
+		return models.CollectionFolder{}, err
 	}
 
 	req, err := s.client.NewRequest("POST", path)
 	if err != nil {
-		return nil, err
+		return models.CollectionFolder{}, err
 	}
 
 	req.Body = io.NopCloser(bytes.NewReader(body))
@@ -75,10 +69,10 @@ func (s *CollectionService) AddFolder(username string, folderName string) (*mode
 	var result models.CollectionFolder
 	err = s.client.Execute(req, &result)
 	if err != nil {
-		return nil, err
+		return models.CollectionFolder{}, err
 	}
 
-	return &result, nil
+	return result, nil
 }
 
 //
@@ -88,21 +82,21 @@ func (s *CollectionService) AddFolder(username string, folderName string) (*mode
 // Discogs API: GET /users/{username}/collection/folders/{folder_id}
 //
 // Retrieve metadata about a folder in a user’s collection.
-func (s *CollectionService) GetFolderById(username string, folderID int) (*models.CollectionFolder, error) {
+func (s *CollectionService) GetFolderById(username string, folderID int) (models.CollectionFolder, error) {
 	path := fmt.Sprintf("/users/%s/collection/folders/%d", username, folderID)
 
 	req, err := s.client.NewRequest("GET", path)
 	if err != nil {
-		return nil, err
+		return models.CollectionFolder{}, err
 	}
 
 	var result models.CollectionFolder
 	err = s.client.Execute(req, &result)
 	if err != nil {
-		return nil, err
+		return models.CollectionFolder{}, err
 	}
 
-	return &result, nil
+	return result, nil
 }
 
 //
@@ -113,20 +107,20 @@ func (s *CollectionService) GetFolderById(username string, folderID int) (*model
 //
 // View the user’s collection folders which contain a specified release. This will also show information about each release instance.
 
-func (s *CollectionService) GetItemsByReleaseId(username string, releaseID int) (*models.CollectionReleases, error) {
+func (s *CollectionService) GetItemsByReleaseId(username string, releaseID int) (models.CollectionReleases, error) {
 	path := fmt.Sprintf("/users/%s/collection/releases/%d", username, releaseID)
 
 	req, err := s.client.NewRequest("GET", path)
 	if err != nil {
-		return nil, err
+		return models.CollectionReleases{}, err
 	}
 	var result models.CollectionReleases
 	err = s.client.Execute(req, &result)
 	if err != nil {
-		return nil, err
+		return models.CollectionReleases{}, err
 	}
 
-	return &result, nil
+	return result, nil
 }
 
 //
@@ -136,21 +130,21 @@ func (s *CollectionService) GetItemsByReleaseId(username string, releaseID int) 
 // Discogs API: GET /users/{username}/collection/folders/{folder_id}/releases
 //
 // Returns the list of item in a folder in a user’s collection. Accepts Pagination parameters.
-func (s *CollectionService) GetItemsByFolder(username string, folderID int, pageOptions models.PageSettings) (*models.CollectionReleases, error) {
+func (s *CollectionService) GetItemsByFolder(username string, folderID int, pageOptions models.PageSettings) (models.CollectionReleases, error) {
 	path := fmt.Sprintf("/users/%s/collection/folders/%d/releases?page=%d&per_page=%d", username, folderID, pageOptions.Page, pageOptions.PerPage)
 
 	req, err := s.client.NewRequest("GET", path)
 	if err != nil {
-		return nil, err
+		return models.CollectionReleases{}, err
 	}
 
 	var result models.CollectionReleases
 	err = s.client.Execute(req, &result)
 	if err != nil {
-		return nil, err
+		return models.CollectionReleases{}, err
 	}
 
-	return &result, nil
+	return result, nil
 }
 
 //
@@ -161,19 +155,19 @@ func (s *CollectionService) GetItemsByFolder(username string, folderID int, page
 //
 // Retrieve a list of user-defined collection notes fields. These fields are available on every release in the collection.
 
-func (s *CollectionService) GetCustomFields(username string) (*models.CollectionFields, error) {
+func (s *CollectionService) GetCustomFields(username string) (models.CollectionFields, error) {
 	path := fmt.Sprintf("/users/%s/collection/fields", username)
 
 	req, err := s.client.NewRequest("GET", path)
 	if err != nil {
-		return nil, err
+		return models.CollectionFields{}, err
 	}
 
 	var result models.CollectionFields
 	err = s.client.Execute(req, &result)
 	if err != nil {
-		return nil, err
+		return models.CollectionFields{}, err
 	}
 
-	return &result, nil
+	return result, nil
 }
